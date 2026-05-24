@@ -80,11 +80,11 @@ async function postRewrite(payload) {
   throw lastError || new Error("API request failed.");
 }
 
-async function rewriteWithStyle(styleId, button) {
+async function respondWithStyle(styleId, button) {
   const text = inputText.value.trim();
 
   if (!text) {
-    result.textContent = "請先貼上 Threads 貼文。";
+    result.textContent = "請先貼上一段 reflection。";
     safetyResult.textContent = "尚未檢查。";
     inputText.focus();
     return;
@@ -100,7 +100,7 @@ async function rewriteWithStyle(styleId, button) {
       styleId,
       secondaryStyleId: null,
       intensity: 3,
-      purpose: "thread",
+      purpose: "reflection",
       text
     });
 
@@ -123,6 +123,6 @@ async function rewriteWithStyle(styleId, button) {
 
 buttons.forEach((button) => {
   button.addEventListener("click", () => {
-    rewriteWithStyle(button.dataset.style, button);
+    respondWithStyle(button.dataset.style, button);
   });
 });
