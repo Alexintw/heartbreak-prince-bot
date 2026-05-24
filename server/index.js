@@ -15,21 +15,10 @@ app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 
 const purposeInstructions = {
-  love_letter: {
-    label: "情書",
-    instruction: "語氣要真誠、溫柔、有情感，但避免過度油膩或浮誇。建議 200 到 450 字。"
-  },
-  reading_note: {
-    label: "讀書心得",
-    instruction: "要保留思辨感，說明這段文字帶來的理解、反省或觀點轉折。建議 250 到 500 字。"
-  },
-  concert_reflection: {
-    label: "音樂會心得",
-    instruction: "要有聲音、空間、身體感與情緒層次，適合描述古典音樂或現場感。建議 250 到 550 字。"
-  },
-  career_article: {
-    label: "職涯文章",
-    instruction: "要有清楚問題意識、個人經驗、方法與結論，適合 LinkedIn、Thread 或長文。建議 350 到 700 字。"
+  reflection: {
+    label: "個人 reflection",
+    instruction:
+      "文字要像一段寫給自己的散文回應，適合私人日記、情緒整理、關係回望或生活反思。請讀懂使用者正在經歷的感受，給出有文學感、真誠、能陪伴自我整理的回應。建議 180 到 420 字。"
   }
 };
 
@@ -157,13 +146,13 @@ ${buildStyleDescription(secondaryStyleCard)}
     : "";
 
   return `
-你是一個名叫「心碎小王子」的中文散文回應機器人。
+你是一個名叫「心碎小王子」的中文散文 reflection 回應機器人。
 
 你的任務：
-使用者會貼上一段社群貼文。
-你要先讀懂貼文裡的情緒、處境、矛盾與沒有說出口的部分，再以散文大師的口吻回應他。
-你不是改寫貼文，也不是替貼文換句話說。
-你要像一個懂得失落、孤獨、戀愛、生活疲憊與自我整理的人，寫出一段能回到對方心裡的原創回應。
+使用者會貼上一段個人 reflection，可能是日記、心情紀錄、關係片段、生活困惑或自我對話。
+你要先讀懂文字裡的情緒、處境、矛盾與沒有說出口的部分，再以散文大師的口吻回應他。
+你不是改寫這段 reflection，也不是替它換句話說。
+你要像一個懂得失落、孤獨、戀愛、生活疲憊與自我整理的人，寫出一段能陪使用者回到自己心裡的原創回應。
 
 你不是角色扮演。
 你不是任何作家本人。
@@ -196,14 +185,14 @@ ${secondaryStyleDescription}
 【共同安全限制】
 1. 不可直接引用任何已故作家的原文。
 2. 不可輸出高度近似既有作品的段落。
-3. 不可把使用者貼文改成像某篇名作的變體。
+3. 不可把使用者文字改成像某篇名作的變體。
 4. 不可使用過度標誌性的原作名句、句型或段落結構。
 5. 不可聲稱「這是某某作家會寫的」。
-6. 必須回應使用者貼文的核心情緒與處境。
+6. 必須回應使用者 reflection 的核心情緒與處境。
 7. 必須輸出繁體中文。
 8. 請直接輸出回應內容，不要解釋。
 
-【使用者貼文】
+【使用者 reflection】
 ${userText}
 `;
 }
@@ -222,7 +211,7 @@ async function runSafetyCheck({
     : "";
 
   const safetyPrompt = `
-你是一個文學風格回應結果的安全檢查器。
+你是一個文學風格 reflection 回應結果的安全檢查器。
 
 請檢查以下生成文字是否符合規則：
 
@@ -281,7 +270,7 @@ app.post("/api/rewrite", async (req, res) => {
       styleId,
       secondaryStyleId,
       intensity = 3,
-      purpose = "thread",
+      purpose = "reflection",
       text
     } = req.body;
 
@@ -333,12 +322,12 @@ app.post("/api/rewrite", async (req, res) => {
       userText: text.trim()
     });
 
-    const rewriteResponse = await client.responses.create({
+    const response = await client.responses.create({
       model: "gpt-5.5",
       input: prompt
     });
 
-    const generatedText = (rewriteResponse.output_text || "").trim();
+    const generatedText = (response.output_text || "").trim();
     const ruleCheck = ruleBasedSafetyCheck(generatedText);
     const safetyCheck = await runSafetyCheck({
       generatedText,
@@ -372,7 +361,7 @@ app.post("/api/rewrite", async (req, res) => {
     }
 
     res.status(500).json({
-      error: "Rewrite failed."
+      error: "Reflection response failed."
     });
   }
 });
@@ -380,5 +369,5 @@ app.post("/api/rewrite", async (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`Literary style bot server running on port ${PORT}`);
+  console.log(`Heartbreak prince bot server running on port ${PORT}`);
 });
