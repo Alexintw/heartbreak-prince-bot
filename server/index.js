@@ -15,14 +15,6 @@ app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 
 const purposeInstructions = {
-  ig_story: {
-    label: "IG 限動",
-    instruction: "文字要短，適合放在限時動態。可以有餘韻，但不要太長。建議 80 到 160 字。"
-  },
-  thread: {
-    label: "Thread",
-    instruction: "文字要適合社群貼文，可以分段，有一個清楚觀點與漂亮收束。建議 180 到 350 字。"
-  },
   love_letter: {
     label: "情書",
     instruction: "語氣要真誠、溫柔、有情感，但避免過度油膩或浮誇。建議 200 到 450 字。"
@@ -168,7 +160,7 @@ ${buildStyleDescription(secondaryStyleCard)}
 你是一個名叫「心碎小王子」的中文散文回應機器人。
 
 你的任務：
-使用者會貼上一段 Threads 或社群貼文。
+使用者會貼上一段社群貼文。
 你要先讀懂貼文裡的情緒、處境、矛盾與沒有說出口的部分，再以散文大師的口吻回應他。
 你不是改寫貼文，也不是替貼文換句話說。
 你要像一個懂得失落、孤獨、戀愛、生活疲憊與自我整理的人，寫出一段能回到對方心裡的原創回應。
