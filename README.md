@@ -1,13 +1,13 @@
 # 心碎小王子
 
-這是一個 Node.js + Express + HTML/CSS/JS 的中文散文回應機器人。使用者可以把社群貼文貼到網站，按下想要的文學口吻按鈕，機器人會以「心碎小王子」的語氣讀懂貼文情緒，再生成一段受文學風格啟發的原創回應。
+這是一個 Node.js + Express + HTML/CSS/JS 的中文散文 reflection 回應機器人。使用者可以把自己的日記、心情紀錄、關係片段、生活困惑或自我對話貼到網站，按下想要的文學口吻按鈕，機器人會以「心碎小王子」的語氣讀懂文字裡的情緒，再生成一段受文學風格啟發的原創回應。
 
-專案使用 Prompt + 風格資料庫，不使用 fine-tuning。它不是改寫使用者原文，而是回應使用者貼上的話。
+專案使用 Prompt + 風格資料庫，不使用 fine-tuning。它不是改寫使用者原文，而是陪使用者把個人 reflection 裡的感受、矛盾與未說出口的部分整理成一段有文學感的回應。
 
 ## 專案結構
 
 ```text
-literary-style-bot/
+heartbreak-prince-bot/
   server/
     index.js
     styleCards.js
@@ -66,7 +66,7 @@ npm run dev
 http://localhost:5000
 ```
 
-若本機的 `5000` 埠已被其他服務佔用，請先釋放該埠，或同步調整 `server/.env` 的 `PORT`。前端會優先嘗試 `5000`，並嘗試幾個常見本機備用埠。
+若本機的 `5000` 埠已被其他服務占用，請先釋放該埠，或同步調整 `server/.env` 的 `PORT`。前端會優先嘗試 `5000`，並嘗試幾個常見本機備用埠。
 
 ## 打開前端
 
@@ -97,7 +97,7 @@ curl -X POST http://localhost:5000/api/rewrite \
     "styleId": "xiao_hong",
     "secondaryStyleId": "haipai_shiqing",
     "intensity": 3,
-    "purpose": "thread",
+    "purpose": "reflection",
     "text": "今天下班後走在路上，突然覺得生活很累，但也還有一點希望。"
   }'
 ```
@@ -110,8 +110,8 @@ curl -X POST http://localhost:5000/api/rewrite \
   "styleName": "蕭紅式",
   "secondaryStyleName": "海派世情式",
   "intensity": 3,
-  "purpose": "thread",
-  "output": "生成回應結果",
+  "purpose": "reflection",
+  "output": "生成個人 reflection 回應結果",
   "ruleCheck": {
     "passed": true,
     "hits": []
