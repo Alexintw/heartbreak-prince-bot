@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>心碎小王子</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <h1>心碎小王子</h1>
+    </header>
+
+    <section class="panel">
+      <label class="textarea-label" for="inputText">貼上 Threads 貼文</label>
+      <textarea id="inputText" placeholder="把你在 Threads 看到、或自己想說的一段話貼在這裡..."></textarea>
+    </section>
+
+    <section class="panel">
+      <h2>選擇心碎小王子的回應口吻</h2>
+      <div class="style-buttons" aria-label="主風格">
+        <button type="button" data-style="xiao_hong" class="active">寒地孤燈｜蕭紅式</button>
+        <button type="button" data-style="lu_yin">幽微自省｜廬隱式</button>
+        <button type="button" data-style="lin_huiyin">窗光清雅｜林徽因式</button>
+        <button type="button" data-style="lu_xun">冷眼刀鋒｜魯迅式</button>
+        <button type="button" data-style="xu_zhimo">雲月浪漫｜徐志摩式</button>
+        <button type="button" data-style="hu_shih">白話實證｜胡適式</button>
+        <button type="button" data-style="liang_qichao">少年中國｜梁啟超式</button>
+        <button type="button" data-style="zhu_ziqing">清水微光｜朱自清式</button>
+      </div>
+    </section>
+
+    <section class="result-grid">
+      <article class="result-box">
+        <h2>心碎小王子的回應</h2>
+        <div id="result" class="output-text">貼上文字後，選一種口吻。</div>
+      </article>
+
+      <article class="result-box">
+        <h2>安全檢查</h2>
+        <div id="safetyResult" class="output-text">尚未檢查。</div>
+      </article>
+    </section>
+
+    <footer>
+      本工具只生成受文學風格啟發的原創文字，不引用、不複製、不聲稱為作者本人作品。
+    </footer>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
