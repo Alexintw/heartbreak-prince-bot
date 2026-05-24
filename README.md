@@ -1,2 +1,3 @@
 # heartbreak-prince-bot
 一個把貼文讀成散文回應的中文 AI 機器人。
+我不只是個AI機器人，我可以接住你的心
