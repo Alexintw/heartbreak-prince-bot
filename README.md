@@ -4,19 +4,62 @@
 
 專案使用 Prompt + 風格資料庫，不使用 fine-tuning。它不是改寫使用者原文，而是陪使用者把個人 reflection 裡的感受、矛盾與未說出口的部分整理成一段有文學感的回應。
 
+## 產品架構
+
+```text
+Frontend
+  Next.js / React / LINE Bot / Web chat UI
+        ↓
+Backend API
+  Node.js Express / FastAPI
+        ↓
+Product Logic Layer
+  intent router / permission / RAG / tool calling / cost control
+        ↓
+Data Layer
+  PostgreSQL / MongoDB / Redis / Vector Store
+        ↓
+OpenAI API
+  Responses API / Embeddings / Structured Outputs / Function Calling
+```
+
+目前 MVP 使用 `client/` 作為 Web chat UI，`server/` 作為 Node.js Express API。更完整的分層說明請看 [docs/architecture.md](docs/architecture.md)。
+
 ## 專案結構
 
 ```text
 heartbreak-prince-bot/
-  server/
-    index.js
-    styleCards.js
-    package.json
-    .env.example
   client/
     index.html
     style.css
     app.js
+  server/
+    index.js
+    api/
+      reflectionRoutes.js
+    product/
+      reflectionPipeline.js
+      intentRouter.js
+      permission.js
+      rag.js
+      toolCalling.js
+      costControl.js
+    data/
+      postgres.js
+      mongo.js
+      redis.js
+      vectorStore.js
+    openai/
+      client.js
+      responses.js
+      embeddings.js
+      structuredOutputs.js
+      functionCalling.js
+    styleCards.js
+    package.json
+    .env.example
+  docs/
+    architecture.md
   README.md
 ```
 
@@ -50,8 +93,18 @@ cp .env.example .env
 
 ```env
 OPENAI_API_KEY=your_api_key_here
+OPENAI_MODEL=gpt-5.5
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 PORT=5000
+MAX_INPUT_CHARS=6000
+
+POSTGRES_URL=
+MONGODB_URI=
+REDIS_URL=
+VECTOR_STORE_URL=
 ```
+
+資料庫設定目前是選配，沒有填也可以跑 MVP。
 
 ## 啟動後端
 
@@ -79,6 +132,12 @@ client/index.html
 請先確認後端已啟動。
 
 ## API 範例
+
+### GET /api/health
+
+```bash
+curl http://localhost:5000/api/health
+```
 
 ### GET /api/styles
 
@@ -116,7 +175,12 @@ curl -X POST http://localhost:5000/api/rewrite \
     "passed": true,
     "hits": []
   },
-  "safetyCheck": "安全等級：通過\n理由：...\n修改建議：..."
+  "safetyCheck": "安全等級：通過\n理由：...\n修改建議：...",
+  "meta": {
+    "intent": "personal_reflection",
+    "ragEnabled": false,
+    "toolCallingEnabled": false
+  }
 }
 ```
 
