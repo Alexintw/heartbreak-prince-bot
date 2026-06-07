@@ -1,0 +1,299 @@
+import { styleCards } from "../styleCards.js";
+import { hasUsableOpenAIKey } from "../openai/client.js";
+import { createTextResponse } from "../openai/responses.js";
+import { createHttpError } from "./permission.js";
+import { enforceCostBudget } from "./costControl.js";
+import { routeIntent } from "./intentRouter.js";
+import { retrieveReflectionContext } from "./rag.js";
+import { buildToolPlan } from "./toolCalling.js";
+
+const purposeInstructions = {
+  reflection: {
+    label: "個人 reflection",
+    instruction:
+      "文字要像一段寫給自己的散文回應，適合私人日記、情緒整理、關係回望或生活反思。請讀懂使用者正在經歷的感受，給出有文學感、真誠、能陪伴自我整理的回應。建議 180 到 420 字。"
+  }
+};
+
+const intensityInstructions = {
+  1: "只保留很淡的風格影子。語言仍以使用者原本語氣為主。",
+  2: "加入輕度風格化。可使用少量該風格的意象與句法。",
+  3: "明顯風格化。語氣、節奏、意象都要能辨識出該風格方向。",
+  4: "濃厚風格化。可以更強烈使用該風格的節奏、修辭與世界觀，但仍必須原創。",
+  5: "極濃風格化。風格辨識度要高，但必須特別避免引用、貼近、改寫任何原作者既有句子。"
+};
+
+const blockedSafetyPhrases = [
+  "蕭紅寫道",
+  "廬隱寫道",
+  "林徽因寫道",
+  "魯迅寫道",
+  "徐志摩寫道",
+  "胡適寫道",
+  "梁啟超寫道",
+  "朱自清寫道",
+  "張愛玲寫道",
+  "蕭紅原文",
+  "廬隱原文",
+  "林徽因原文",
+  "魯迅原文",
+  "徐志摩原文",
+  "胡適原文",
+  "梁啟超原文",
+  "朱自清原文",
+  "張愛玲原文",
+  "蕭紅本人",
+  "廬隱本人",
+  "林徽因本人",
+  "魯迅本人",
+  "徐志摩本人",
+  "胡適本人",
+  "梁啟超本人",
+  "朱自清本人",
+  "張愛玲本人",
+  "這是蕭紅",
+  "這是廬隱",
+  "這是林徽因",
+  "這是魯迅",
+  "這是徐志摩",
+  "這是胡適",
+  "這是梁啟超",
+  "這是朱自清",
+  "這是張愛玲",
+  "張愛玲式",
+  "模仿張愛玲",
+  "重現張愛玲"
+];
+
+export function normalizeIntensity(value) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return 3;
+  }
+
+  return Math.min(5, Math.max(1, Math.round(numericValue)));
+}
+
+export function buildStyleDescription(styleCard) {
+  return `
+風格名稱：${styleCard.displayName}
+風格定位：${styleCard.positioning}
+
+語氣：
+${styleCard.tone.join("、")}
+
+常用意象：
+${styleCard.imagery.join("、")}
+
+句法規則：
+${styleCard.sentenceRules.map((rule, index) => `${index + 1}. ${rule}`).join("\n")}
+
+安全規則：
+${styleCard.safetyRules.map((rule, index) => `${index + 1}. ${rule}`).join("\n")}
+
+原創示範句：
+${styleCard.examples.map((example, index) => `${index + 1}. ${example}`).join("\n")}
+`;
+}
+
+export function buildStylePrompt({
+  primaryStyleCard,
+  secondaryStyleCard,
+  intensity,
+  purpose,
+  userText,
+  intentResult,
+  ragContext,
+  toolPlan,
+  costBudget
+}) {
+  const selectedPurpose = purposeInstructions[purpose];
+  const intensityText = intensityInstructions[intensity];
+
+  const secondaryBlock = secondaryStyleCard
+    ? `
+混合風格設定：
+1. 主風格佔 60%。
+2. 混合風格佔 40%。
+3. 主風格決定整體語氣與結尾。
+4. 混合風格補充句法、思考方式或部分意象。
+5. 不要在輸出中提到 60%、40% 或作者名字。
+`
+    : `
+混合風格設定：
+不混合。請只使用主風格方向。
+`;
+
+  const secondaryStyleDescription = secondaryStyleCard
+    ? `
+【混合風格資料】
+${buildStyleDescription(secondaryStyleCard)}
+`
+    : "";
+
+  return `
+你是一個名叫「心碎小王子」的中文散文 reflection 回應機器人。
+
+你的任務：
+使用者會貼上一段個人 reflection，可能是日記、心情紀錄、關係片段、生活困惑或自我對話。
+你要先讀懂文字裡的情緒、處境、矛盾與沒有說出口的部分，再以散文大師的口吻回應他。
+你不是改寫這段 reflection，也不是替它換句話說。
+你要像一個懂得失落、孤獨、戀愛、生活疲憊與自我整理的人，寫出一段能陪使用者回到自己心裡的原創回應。
+
+你不是角色扮演。
+你不是任何作家本人。
+你不能聲稱輸出文字是任何作家寫的。
+你只能生成「受文學風格啟發的原創文字」。
+示範句只供風格理解，不可照抄、改寫或挪用。
+不要稱呼自己是 AI。
+不要分析你的寫作策略。
+不要說「你這段文字可以改成」。
+
+【產品邏輯結果】
+intent：${intentResult.intent}
+RAG：${ragContext.enabled ? "enabled" : "disabled"}
+tool calling：${toolPlan.enabled ? "enabled" : "disabled"}
+estimated input tokens：${costBudget.estimatedInputTokens}
+
+【用途】
+${selectedPurpose.label}
+
+【用途要求】
+${selectedPurpose.instruction}
+
+【語氣強度】
+${intensity} / 5
+
+【強度要求】
+${intensityText}
+
+${secondaryBlock}
+
+【主風格資料】
+${buildStyleDescription(primaryStyleCard)}
+
+${secondaryStyleDescription}
+
+【共同安全限制】
+1. 不可直接引用任何已故作家的原文。
+2. 不可輸出高度近似既有作品的段落。
+3. 不可把使用者文字改成像某篇名作的變體。
+4. 不可使用過度標誌性的原作名句、句型或段落結構。
+5. 不可聲稱「這是某某作家會寫的」。
+6. 必須回應使用者 reflection 的核心情緒與處境。
+7. 必須輸出繁體中文。
+8. 請直接輸出回應內容，不要解釋。
+
+【使用者 reflection】
+${userText}
+`;
+}
+
+export async function runSafetyCheck({
+  generatedText,
+  primaryStyleCard,
+  secondaryStyleCard
+}) {
+  const styleNames = secondaryStyleCard
+    ? `${primaryStyleCard.displayName}、${secondaryStyleCard.displayName}`
+    : primaryStyleCard.displayName;
+  const includesHaipaiStyle = styleNames.includes("海派世情式");
+  const haipaiCheck = includesHaipaiStyle
+    ? "6. 若檢查對象包含「海派世情式」，是否誤標示為「張愛玲式」、是否出現模仿或重現張愛玲的說法？"
+    : "";
+
+  const safetyPrompt = `
+你是一個文學風格 reflection 回應結果的安全檢查器。
+
+請檢查以下生成文字是否符合規則：
+
+檢查對象風格：
+${styleNames}
+
+請判斷：
+1. 是否直接引用已故作家的原文？
+2. 是否過度近似特定已知作品？
+3. 是否聲稱自己是某位作家本人？
+4. 是否符合「受風格啟發的原創文字」？
+5. 是否有需要降低相似度的地方？
+${haipaiCheck}
+
+請用繁體中文輸出，格式如下：
+
+安全等級：通過 / 需注意 / 不通過
+理由：
+修改建議：
+
+生成文字：
+${generatedText}
+`;
+
+  return createTextResponse(safetyPrompt);
+}
+
+export function ruleBasedSafetyCheck(text) {
+  const hits = blockedSafetyPhrases.filter((phrase) => text.includes(phrase));
+
+  return {
+    passed: hits.length === 0,
+    hits
+  };
+}
+
+export async function generateReflectionResponse({
+  styleId,
+  secondaryStyleId,
+  intensity,
+  purpose,
+  text
+}) {
+  if (!hasUsableOpenAIKey()) {
+    throw createHttpError(500, "OpenAI API key is missing or invalid. Please update server/.env.");
+  }
+
+  const primaryStyleCard = styleCards[styleId];
+  const secondaryStyleCard = secondaryStyleId ? styleCards[secondaryStyleId] : null;
+  const safeIntensity = normalizeIntensity(intensity);
+  const costBudget = enforceCostBudget({ text });
+  const intentResult = routeIntent({ text, purpose });
+  const ragContext = await retrieveReflectionContext({ text, styleId });
+  const toolPlan = buildToolPlan(intentResult);
+
+  const prompt = buildStylePrompt({
+    primaryStyleCard,
+    secondaryStyleCard,
+    intensity: safeIntensity,
+    purpose,
+    userText: text,
+    intentResult,
+    ragContext,
+    toolPlan,
+    costBudget
+  });
+
+  const generatedText = (await createTextResponse(prompt)).trim();
+  const ruleCheck = ruleBasedSafetyCheck(generatedText);
+  const safetyCheck = await runSafetyCheck({
+    generatedText,
+    primaryStyleCard,
+    secondaryStyleCard
+  });
+
+  return {
+    styleId,
+    styleName: primaryStyleCard.displayName,
+    secondaryStyleName: secondaryStyleCard?.displayName || null,
+    intensity: safeIntensity,
+    purpose,
+    output: generatedText,
+    ruleCheck,
+    safetyCheck,
+    meta: {
+      intent: intentResult.intent,
+      costBudget,
+      ragEnabled: ragContext.enabled,
+      toolCallingEnabled: toolPlan.enabled
+    }
+  };
+}
